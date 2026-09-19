@@ -1,0 +1,27 @@
+@"
+node_modules/
+package-lock.json
+
+.env
+.env.local
+.env.*.local
+!.env.example
+
+*.log
+logs/
+
+dist/
+build/
+coverage/
+
+.vscode/
+.idea/
+*.swp
+
+.DS_Store
+Thumbs.db
+
+tmp/
+temp/
+*.tmp
+"@ | Out-File -Encoding utf8 .gitignore
