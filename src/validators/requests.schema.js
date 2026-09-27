@@ -42,3 +42,22 @@ export const idParamOnlySchema = {
 export const equipmentIdParamSchema = {
   params: z.object({ id: z.uuid() }),
 };
+
+export const assignSchema = {
+  body: z.strictObject({
+    assignees: z
+      .array(
+        z.strictObject({
+          technicianId: z.uuid(),
+          role: z.enum(['lead', 'member']),
+          hours: z.number().nonnegative().max(1000).optional(),
+        })
+      )
+      .min(1),
+  }),
+  params: z.object({ id: z.uuid() }),
+};
+
+export const unassignSchema = {
+  params: z.object({ id: z.uuid(), userId: z.uuid() }),
+};

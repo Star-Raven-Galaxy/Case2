@@ -1,0 +1,566 @@
+﻿{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+    "name": "Case 3 — Equipment Maintenance API",
+    "description": "Коллекция для проверки API учёта заявок на обслуживание оборудования. Сохраняет контракт Кейса 2 и дополнена новыми эндпоинтами Кейса 3.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "equipmentId",
+      "value": ""
+    },
+    {
+      "key": "requestId",
+      "value": ""
+    },
+    {
+      "key": "technicianId",
+      "value": "aaaaaaaa-0001-4000-8000-000000000001"
+    },
+    {
+      "key": "technicianId2",
+      "value": "aaaaaaaa-0002-4000-8000-000000000002"
+    },
+    {
+      "key": "siteId",
+      "value": "11111111-1111-4111-8111-111111111111"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 — Health",
+      "item": [
+        {
+          "name": "GET /api/health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "health" ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 — Equipment (Case 2 contract)",
+      "item": [
+        {
+          "name": "GET /api/equipment — list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment?page=1&limit=10&sort=name&order=asc",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "equipment" ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "sort",
+                  "value": "name"
+                },
+                {
+                  "key": "order",
+                  "value": "asc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/equipment — create (saves equipmentId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('equipmentId', body.data.id);",
+                  "  console.log('equipmentId =', body.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Turbine Postman\",\n  \"type\": \"turbine\",\n  \"serialNumber\": \"SN-POSTMAN-{{$randomInt}}\",\n  \"location\": { \"lat\": 55.75, \"lon\": 37.62 },\n  \"status\": \"operational\",\n  \"installedAt\": \"2024-01-15T10:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "equipment" ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/equipment/:id — card",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment/{{equipmentId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "equipment", "{{equipmentId}}" ]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/equipment/:id — update",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"maintenance\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment/{{equipmentId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "equipment", "{{equipmentId}}" ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/equipment/:id/requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment/{{equipmentId}}/requests",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "equipment", "{{equipmentId}}", "requests" ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/equipment/:id/weather",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment/{{equipmentId}}/weather",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "equipment", "{{equipmentId}}", "weather" ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 — Requests (Case 2 contract)",
+      "item": [
+        {
+          "name": "GET /api/requests — list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests?page=1&limit=10&sort=createdAt&order=desc",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "requests" ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "order",
+                  "value": "desc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/requests — create (saves requestId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('requestId', body.data.id);",
+                  "  console.log('requestId =', body.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"equipmentId\": \"{{equipmentId}}\",\n  \"title\": \"Postman test request\",\n  \"description\": \"Создано из Postman\",\n  \"priority\": \"medium\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "requests" ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/requests/:id — card",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "requests", "{{requestId}}" ]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/requests/:id — update fields",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priority\": \"high\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "requests", "{{requestId}}" ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 — Requests (Case 3 new endpoints)",
+      "item": [
+        {
+          "name": "POST /api/requests/:id/assignees — assign team",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignees\": [\n    { \"technicianId\": \"{{technicianId}}\",  \"role\": \"lead\",   \"hours\": 8 },\n    { \"technicianId\": \"{{technicianId2}}\", \"role\": \"member\", \"hours\": 6 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "requests", "{{requestId}}", "assignees" ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/requests/:id/assignees/:userId — unassign",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/assignees/{{technicianId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "requests", "{{requestId}}", "assignees", "{{technicianId}}" ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/requests/:id/history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/history",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "requests", "{{requestId}}", "history" ]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/requests/:id/status — new → in_progress (200)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/status",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "requests", "{{requestId}}", "status" ]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/requests/:id/status — in_progress → done (200)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"done\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/status",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "requests", "{{requestId}}", "status" ]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/requests/:id/status — invalid transition (409)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/status",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "requests", "{{requestId}}", "status" ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 — Sites",
+      "item": [
+        {
+          "name": "GET /api/sites/:id/summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sites/{{siteId}}/summary",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "sites", "{{siteId}}", "summary" ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 — Reports",
+      "item": [
+        {
+          "name": "GET /api/reports/equipment-load — all",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/equipment-load",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "reports", "equipment-load" ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/reports/equipment-load — minRequests=2",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/equipment-load?minRequests=2",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "reports", "equipment-load" ],
+              "query": [
+                {
+                  "key": "minRequests",
+                  "value": "2"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "99 — Negative cases",
+      "item": [
+        {
+          "name": "GET /api/equipment/:id — unknown (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment/00000000-0000-0000-0000-000000000000",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "equipment", "00000000-0000-0000-0000-000000000000" ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/equipment/:id — invalid UUID (422)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment/not-a-uuid",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "equipment", "not-a-uuid" ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/equipment — duplicate serialNumber (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Turbine Duplicate\",\n  \"type\": \"turbine\",\n  \"serialNumber\": \"TURB-MOW-001\",\n  \"location\": { \"lat\": 55.75, \"lon\": 37.62 },\n  \"status\": \"operational\",\n  \"installedAt\": \"2024-01-15T10:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "equipment" ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/requests/:id/assignees — without lead (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignees\": [\n    { \"technicianId\": \"{{technicianId}}\", \"role\": \"member\", \"hours\": 8 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "requests", "{{requestId}}", "assignees" ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/requests/:id/assignees — unknown technician (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignees\": [\n    { \"technicianId\": \"00000000-0000-0000-0000-000000000000\", \"role\": \"lead\", \"hours\": 8 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "requests", "{{requestId}}", "assignees" ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/equipment/:id — with open requests (409)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment/bbbbbbbb-0001-4000-8000-000000000001",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "equipment", "bbbbbbbb-0001-4000-8000-000000000001" ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/unknown — unknown route (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/unknown",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "unknown" ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

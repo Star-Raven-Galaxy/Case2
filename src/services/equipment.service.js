@@ -15,23 +15,25 @@ export const equipmentService = {
   },
 
   async create(payload) {
-    const existing = await equipmentRepository.findBySerialNumber(payload.serialNumber);
-    if (existing) throw new ConflictError('Серийный номер уже занят');
-    return equipmentRepository.create(payload);
-  },
+  const normalized = normalizeEquipmentPayload(payload);
+  const existing = await equipmentRepository.findBySerialNumber(normalized.serialNumber);
+  if (existing) throw new ConflictError('Серийный номер уже занят');
+  return equipmentRepository.create(normalized);
+},
 
-  async update(id, patch) {
-    await this.getById(id);
+async update(id, patch) {
+  await this.getById(id);
+  const normalized = normalizeEquipmentPayload(patch);
 
-    if (patch.serialNumber) {
-      const existing = await equipmentRepository.findBySerialNumber(patch.serialNumber);
-      if (existing && existing.id !== id) {
-        throw new ConflictError('Серийный номер уже занят');
-      }
+  if (normalized.serialNumber) {
+    const existing = await equipmentRepository.findBySerialNumber(normalized.serialNumber);
+    if (existing && existing.id !== id) {
+      throw new ConflictError('Серийный номер уже занят');
     }
+  }
 
-    return equipmentRepository.update(id, patch);
-  },
+  return equipmentRepository.update(id, normalized);
+},
 
   async remove(id) {
     await this.getById(id);
@@ -48,4 +50,14 @@ export const equipmentService = {
     await this.getById(id);
     return requestsRepository.findByEquipmentId(id);
   },
+  
 };
+function normalizeEquipmentPayload(payload) {
+  const normalized = { ...payload };
+  if (payload.location && typeof payload.location === 'object') {
+    normalized.lat = payload.location.lat;
+    normalized.lon = payload.location.lon;
+    delete normalized.location;
+  }
+  return normalized;
+}

@@ -1,7 +1,8 @@
 import { getLog } from '../lib/context.js';
 import { config } from '../config/index.js';
-
+import { mapSequelizeError } from '../errors/sequelize-errors.js';
 export function errorHandler(err, req, res, next) {
+  err = mapSequelizeError(err);
   if (res.headersSent) return next(err);
 
   const status = err.status ?? err.statusCode ?? 500;

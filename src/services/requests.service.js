@@ -1,3 +1,4 @@
+import { sequelize, MaintenanceRequest, RequestStatusHistory } from '../db/index.js';
 import { requestsRepository } from '../repositories/requests.repository.js';
 import { equipmentRepository } from '../repositories/equipment.repository.js';
 import { NotFoundError } from '../errors/NotFoundError.js';
@@ -33,17 +34,54 @@ export const requestsService = {
     return requestsRepository.update(id, patch);
   },
 
-  async changeStatus(id, nextStatus) {
-    const request = await this.getById(id);
-    const allowed = ALLOWED_TRANSITIONS[request.status] || [];
+  async changeStatus(id, nextStatus, changedBy = 'system', comment = null) {
+    return sequelize.transaction(async (t) => {
+      const request = await MaintenanceRequest.findByPk(id, {
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (!request) throw new NotFoundError('Заявка');
 
-    if (!allowed.includes(nextStatus)) {
-      throw new ConflictError(
-        `Переход ${request.status} → ${nextStatus} недопустим`
+      const allowed = ALLOWED_TRANSITIONS[request.status] || [];
+      if (!allowed.includes(nextStatus)) {
+        throw new ConflictError(
+          `Переход ${request.status} → ${nextStatus} недопустим`
+        );
+      }
+
+      if (nextStatus === 'in_progress') {
+        const assigneesCount = await requestsRepository.countAssignees(id, t);
+        if (assigneesCount === 0) {
+          throw new ConflictError(
+            'Нельзя перевести в in_progress без назначенных исполнителей'
+          );
+        }
+      }
+
+      const oldStatus = request.status;
+      const closedAt =
+        nextStatus === 'done' || nextStatus === 'rejected' ? new Date() : null;
+
+      await request.update({ status: nextStatus, closedAt }, { transaction: t });
+
+      await RequestStatusHistory.create(
+        {
+          requestId: id,
+          oldStatus,
+          newStatus: nextStatus,
+          changedBy,
+          comment,
+        },
+        { transaction: t }
       );
-    }
 
-    return requestsRepository.update(id, { status: nextStatus });
+      return request;
+    });
+  },
+
+  async getHistory(id) {
+    await this.getById(id);
+    return requestsRepository.findHistory(id);
   },
 
   async remove(id) {
