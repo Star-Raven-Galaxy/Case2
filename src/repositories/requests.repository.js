@@ -4,6 +4,7 @@ import {
   Equipment,
   Technician,
   RequestStatusHistory,
+  RequestAssignee,
 } from '../db/index.js';
 
 const SORTABLE = ['title', 'priority', 'status', 'createdAt', 'plannedAt'];
@@ -106,5 +107,23 @@ export const requestsRepository = {
   async remove(id) {
     const deleted = await MaintenanceRequest.destroy({ where: { id } });
     return deleted > 0;
+  },
+
+  async findHistory(requestId) {
+    return RequestStatusHistory.findAll({
+      where: { requestId },
+      order: [['createdAt', 'ASC']],
+    });
+  },
+
+  async createHistory(data, transaction) {
+    return RequestStatusHistory.create(data, { transaction });
+  },
+
+  async countAssignees(requestId, transaction) {
+    return RequestAssignee.count({
+      where: { requestId },
+      transaction,
+    });
   },
 };

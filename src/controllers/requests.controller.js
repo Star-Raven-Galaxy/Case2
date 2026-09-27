@@ -1,5 +1,5 @@
-
 import { requestsService } from '../services/requests.service.js';
+import { assigneesService } from '../services/assignees.service.js';
 
 export const requestsController = {
   async list(req, res) {
@@ -39,5 +39,26 @@ export const requestsController = {
   async remove(req, res) {
     await requestsService.remove(req.valid.params.id);
     res.status(204).send();
+  },
+
+  async assign(req, res) {
+    const assignees = await assigneesService.assign(
+      req.valid.params.id,
+      req.valid.body.assignees
+    );
+    res.json({ data: assignees });
+  },
+
+  async unassign(req, res) {
+    await assigneesService.unassign(
+      req.valid.params.id,
+      req.valid.params.userId
+    );
+    res.status(204).send();
+  },
+
+  async history(req, res) {
+    const items = await requestsService.getHistory(req.valid.params.id);
+    res.json({ data: items });
   },
 };

@@ -2,16 +2,15 @@
 const { randomUUID } = require('node:crypto');
 
 const TECHS = [
-  'aaaaaaa1-0001-0000-0000-000000000001',
-  'aaaaaaa2-0002-0000-0000-000000000002',
-  'aaaaaaa3-0003-0000-0000-000000000003',
-  'aaaaaaa4-0004-0000-0000-000000000004',
-  'aaaaaaa5-0005-0000-0000-000000000005',
+  'aaaaaaaa-0001-4000-8000-000000000001',
+  'aaaaaaaa-0002-4000-8000-000000000002',
+  'aaaaaaaa-0003-4000-8000-000000000003',
+  'aaaaaaaa-0004-4000-8000-000000000004',
+  'aaaaaaaa-0005-4000-8000-000000000005',
 ];
 
 module.exports = {
   async up(queryInterface) {
-    // Назначаем бригады на первые 6 заявок: 1 lead + 1 member
     const requests = await queryInterface.sequelize.query(
       `SELECT id FROM maintenance_requests ORDER BY created_at LIMIT 6`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }

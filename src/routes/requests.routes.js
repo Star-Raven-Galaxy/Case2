@@ -7,6 +7,8 @@ import {
   changeStatusSchema,
   listRequestsSchema,
   idParamOnlySchema,
+  assignSchema,
+  unassignSchema,
 } from '../validators/requests.schema.js';
 
 export const requestsRouter = Router();
@@ -45,4 +47,22 @@ requestsRouter.delete(
   '/:id',
   validate(idParamOnlySchema),
   requestsController.remove
+);
+
+requestsRouter.post(
+  '/:id/assignees',
+  validate(assignSchema),
+  requestsController.assign
+);
+
+requestsRouter.delete(
+  '/:id/assignees/:userId',
+  validate(unassignSchema),
+  requestsController.unassign
+);
+
+requestsRouter.get(
+  '/:id/history',
+  validate(idParamOnlySchema),
+  requestsController.history
 );

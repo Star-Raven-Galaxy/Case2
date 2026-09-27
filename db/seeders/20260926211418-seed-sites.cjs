@@ -5,7 +5,7 @@ module.exports = {
     const now = new Date();
     await queryInterface.bulkInsert('sites', [
       {
-        id: '11111111-1111-1111-1111-111111111111',
+        id: '11111111-1111-4111-8111-111111111111',
         name: 'Московская ВЭС',
         code: 'MOW-WPP-01',
         region: 'Москва',
@@ -15,7 +15,7 @@ module.exports = {
         updated_at: now,
       },
       {
-        id: '22222222-2222-2222-2222-222222222222',
+        id: '22222222-2222-4222-8222-222222222222',
         name: 'Казанская СЭС',
         code: 'KZN-SPP-02',
         region: 'Татарстан',
@@ -30,8 +30,8 @@ module.exports = {
   async down(queryInterface) {
     await queryInterface.bulkDelete('sites', {
       id: [
-        '11111111-1111-1111-1111-111111111111',
-        '22222222-2222-2222-2222-222222222222',
+        '11111111-1111-4111-8111-111111111111',
+        '22222222-2222-4222-8222-222222222222',
       ],
     });
   },
