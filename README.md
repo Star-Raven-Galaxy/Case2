@@ -275,3 +275,10 @@ erDiagram
 - `last_service_date` — дата последнего обслуживания.
 
 Запрос написан на прямом SQL: `JOIN`, `GROUP BY`, `HAVING`, `FILTER` и агрегатные функции. Все параметры передаются через `replacements`, конкатенации пользовательского ввода в текст запроса нет.
+
+## Postman
+
+В репозитории две коллекции:
+
+- `docs/postman/collection.json` + `docs/postman/environment.json` — коллекция Кейса 2.
+- `postman_collection.json` (в корне) — коллекция Кейса 3: те же и новые эндпоинты(assignees, history, sites summary, reports) и негативные сценарии (404, 409, 422).
