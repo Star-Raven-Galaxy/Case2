@@ -1,4 +1,4 @@
-import { Op } from 'sequelize';
+﻿import { Op } from 'sequelize';
 import {
   MaintenanceRequest,
   Equipment,
@@ -125,5 +125,12 @@ export const requestsRepository = {
       where: { requestId },
       transaction,
     });
+  },
+  async isTechnicianAssigned(requestId, technicianId, transaction = null) {
+    const count = await RequestAssignee.count({
+      where: { requestId, technicianId },
+      transaction,
+    });
+    return count > 0;
   },
 };

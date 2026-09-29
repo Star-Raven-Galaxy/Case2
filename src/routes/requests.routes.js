@@ -1,6 +1,8 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { requestsController } from '../controllers/requests.controller.js';
 import { validate } from '../middlewares/validate.js';
+import { authenticate } from '../middlewares/authenticate.js';
+import { authorize } from '../middlewares/authorize.js';
 import {
   createRequestSchema,
   updateRequestSchema,
@@ -13,56 +15,17 @@ import {
 
 export const requestsRouter = Router();
 
-requestsRouter.get(
-  '/',
-  validate(listRequestsSchema),
-  requestsController.list
-);
+requestsRouter.use(authenticate);
 
-requestsRouter.post(
-  '/',
-  validate(createRequestSchema),
-  requestsController.create
-);
+requestsRouter.get('/', validate(listRequestsSchema), requestsController.list);
+requestsRouter.get('/:id', validate(idParamOnlySchema), requestsController.getById);
+requestsRouter.get('/:id/history', validate(idParamOnlySchema), requestsController.history);
 
-requestsRouter.get(
-  '/:id',
-  validate(idParamOnlySchema),
-  requestsController.getById
-);
+requestsRouter.post('/', authorize('technician', 'admin'), validate(createRequestSchema), requestsController.create);
+requestsRouter.patch('/:id', authorize('technician', 'admin'), validate(updateRequestSchema), requestsController.update);
+requestsRouter.patch('/:id/status', authorize('technician', 'admin'), validate(changeStatusSchema), requestsController.changeStatus);
 
-requestsRouter.patch(
-  '/:id',
-  validate(updateRequestSchema),
-  requestsController.update
-);
+requestsRouter.post('/:id/assignees', authorize('admin'), validate(assignSchema), requestsController.assign);
+requestsRouter.delete('/:id/assignees/:userId', authorize('admin'), validate(unassignSchema), requestsController.unassign);
 
-requestsRouter.patch(
-  '/:id/status',
-  validate(changeStatusSchema),
-  requestsController.changeStatus
-);
-
-requestsRouter.delete(
-  '/:id',
-  validate(idParamOnlySchema),
-  requestsController.remove
-);
-
-requestsRouter.post(
-  '/:id/assignees',
-  validate(assignSchema),
-  requestsController.assign
-);
-
-requestsRouter.delete(
-  '/:id/assignees/:userId',
-  validate(unassignSchema),
-  requestsController.unassign
-);
-
-requestsRouter.get(
-  '/:id/history',
-  validate(idParamOnlySchema),
-  requestsController.history
-);
+requestsRouter.delete('/:id', authorize('admin'), validate(idParamOnlySchema), requestsController.remove);
