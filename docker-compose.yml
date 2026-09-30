@@ -1,22 +1,115 @@
-services:
-  db:
+﻿services:
+  postgres:
     image: postgres:14-alpine
-    container_name: equipment-db
+    container_name: equipment-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:-equipment}
-      POSTGRES_USER: ${DB_USER:-equipment}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-equipment}
-      POSTGRES_HOST_AUTH_METHOD: md5
-    ports:
-      - "${DB_PORT:-5434}:5432"
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-equipment} -d ${DB_NAME:-equipment}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - backend
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: equipment-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      DB_LOGGING: "false"
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-7d}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-10}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+      TRUST_PROXY: "1"
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      LOGIN_RATE_LIMIT_WINDOW_MS: ${LOGIN_RATE_LIMIT_WINDOW_MS:-60000}
+      LOGIN_RATE_LIMIT_MAX: ${LOGIN_RATE_LIMIT_MAX:-10}
+      WEATHER_API_URL: ${WEATHER_API_URL}
+      REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-5000}
+      WIND_THRESHOLD_MS: ${WIND_THRESHOLD_MS:-10}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: equipment-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      api:
+        condition: service_started
+      grafana:
+        condition: service_started
+    networks:
+      - backend
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: equipment-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - backend
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: equipment-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
 
 volumes:
   pgdata:
+  grafana_data:
+  prometheus_data:

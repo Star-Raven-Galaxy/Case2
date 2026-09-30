@@ -7,7 +7,9 @@ import cookieParser from 'cookie-parser';
 import { config } from './config/index.js';
 import { httpLogger } from './lib/http-logger.js';
 import { contextMiddleware } from './lib/context.js';
+import { metricsMiddleware } from './middlewares/metrics.js';
 import { apiRouter } from './routes/index.js';
+import { metricsRouter } from './routes/metrics.routes.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
@@ -20,7 +22,6 @@ app.use(httpLogger);
 app.use(contextMiddleware);
 
 app.use(helmet());
-
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -35,6 +36,8 @@ app.use(
     maxAge: 86400,
   })
 );
+
+app.use(metricsMiddleware);
 
 app.use(
   '/api',
@@ -51,6 +54,7 @@ app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(cookieParser());
 
+app.use('/metrics', metricsRouter);
 app.use('/api', apiRouter);
 app.use(notFound);
 app.use(errorHandler);
