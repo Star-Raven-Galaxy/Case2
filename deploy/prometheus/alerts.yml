@@ -1,0 +1,28 @@
+groups:
+  - name: api-alerts
+    interval: 30s
+    rules:
+      - alert: ApiHigh5xxRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "Api 5xx rate > 5%"
+          description: "Доля ответов 5xx за последние 5 минут превышает 5%."
+
+      - alert: ApiDown
+        expr: up{job="api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "Api недоступен"
+          description: "Prometheus не может достучаться до /metrics api более 1 минуты."
