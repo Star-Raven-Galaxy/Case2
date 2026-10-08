@@ -7,8 +7,6 @@ export const registerSchema = {
   body: z.strictObject({
     email,
     password,
-    role: z.enum(['viewer', 'technician', 'admin']).optional(),
-    technicianId: z.uuid().nullable().optional(),
   }),
 };
 

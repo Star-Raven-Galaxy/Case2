@@ -17,6 +17,27 @@
     networks:
       - backend
 
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: equipment-migrate
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+    command: sh -c "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+    restart: "no"
   api:
     build:
       context: .
@@ -53,6 +74,8 @@
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - backend
 
@@ -116,5 +139,6 @@ volumes:
   pgdata:
   grafana_data:
   prometheus_data:
+
 
 

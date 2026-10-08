@@ -8,7 +8,7 @@ export function metricsMiddleware(req, res, next) {
   const start = process.hrtime.bigint();
 
   res.on('finish', () => {
-    const route = req.route?.path || req.path || 'unknown';
+    const route = req.route?.path || req.baseUrl || 'unknown';
     const labels = {
       method: req.method,
       route,

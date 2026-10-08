@@ -1,4 +1,4 @@
-import { verifyAccessToken } from '../lib/tokens.js';
+﻿import { verifyAccessToken } from '../lib/tokens.js';
 import { UnauthorizedError } from '../errors/UnauthorizedError.js';
 
 export function authenticate(req, res, next) {
@@ -10,7 +10,11 @@ export function authenticate(req, res, next) {
   const token = header.slice('Bearer '.length).trim();
   try {
     const payload = verifyAccessToken(token);
-    req.user = { id: payload.sub, role: payload.role };
+    req.user = {
+      id: payload.sub,
+      role: payload.role,
+      technicianId: payload.technicianId ?? null,
+    };
     next();
   } catch {
     next(new UnauthorizedError('Невалидный или просроченный access-токен'));
