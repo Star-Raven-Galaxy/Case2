@@ -1,4 +1,4 @@
-import { requestsService } from '../services/requests.service.js';
+﻿import { requestsService } from '../services/requests.service.js';
 import { assigneesService } from '../services/assignees.service.js';
 
 export const requestsController = {
@@ -14,24 +14,19 @@ export const requestsController = {
 
   async create(req, res) {
     const request = await requestsService.create(req.valid.body);
-    res
-      .status(201)
-      .location(`/api/requests/${request.id}`)
-      .json({ data: request });
+    res.status(201).location(`/api/requests/${request.id}`).json({ data: request });
   },
 
   async update(req, res) {
-    const request = await requestsService.update(
-      req.valid.params.id,
-      req.valid.body
-    );
+    const request = await requestsService.update(req.valid.params.id, req.valid.body);
     res.json({ data: request });
   },
 
   async changeStatus(req, res) {
     const request = await requestsService.changeStatus(
       req.valid.params.id,
-      req.valid.body.status
+      req.valid.body.status,
+      req.user
     );
     res.json({ data: request });
   },

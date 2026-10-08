@@ -24,19 +24,48 @@
 
 ## Переменные окружения
 
- PORT -  Порт сервера: 3000 
- NODE_ENV - Окружение: development 
- LOG_LEVEL  Уровень логирования: info 
- CORS_ORIGINS  Разрешённые origin через запятую 
- RATE_LIMIT_WINDOW_MS - Окно rate limit (мс):  60000 
- RATE_LIMIT_MAX - Максимум запросов:  100 
- WEATHER_API_URL - URL погодного API  
- REQUEST_TIMEOUT_MS - Таймаут внешнего API:  5000 
- WIND_THRESHOLD_MS - Порог ветра для работ:  10 
+Приложение:
+PORT=3000
+NODE_ENV=development
+LOG_LEVEL=info
+CORS_ORIGINS=http://localhost:5173,http://localhost:3001
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX=100
+WEATHER_API_URL=https://api.open-meteo.com/v1/forecast
+REQUEST_TIMEOUT_MS=5000
+WIND_THRESHOLD_MS=10
+
+
+База данных:
+DB_HOST=127.0.0.1
+DB_PORT=5434
+DB_NAME=equipment
+DB_USER=equipment
+DB_PASSWORD=equipment
+DB_POOL_MAX=10
+DB_LOGGING=false
+DB_NAME_TEST=equipment_test
+
+Аутентификация:
+JWT_ACCESS_SECRET=change-me-access-secret
+JWT_REFRESH_SECRET=change-me-refresh-secret
+JWT_ACCESS_TTL=15m
+JWT_REFRESH_TTL=7d
+BCRYPT_ROUNDS=10
+COOKIE_SECURE=false
+COOKIE_SAMESITE=lax
+TRUST_PROXY=1
+LOGIN_RATE_LIMIT_WINDOW_MS=60000
+LOGIN_RATE_LIMIT_MAX=10
+
+Мониторинг:
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=admin
 
 ## Эндпоинты
 # Health
-GET /api/health — проверка доступности сервиса
+GET /api/health/live — жизнеспособность процесса
+GET /api/health/ready — готовность, включая доступность БД
 
 # Equipment
 GET /api/equipment — список оборудования (фильтры, сортировка, пагинация)
@@ -275,3 +304,273 @@ erDiagram
 - `last_service_date` — дата последнего обслуживания.
 
 Запрос написан на прямом SQL: `JOIN`, `GROUP BY`, `HAVING`, `FILTER` и агрегатные функции. Все параметры передаются через `replacements`, конкатенации пользовательского ввода в текст запроса нет.
+
+## Postman
+
+В репозитории две коллекции:
+
+- `docs/postman/collection.json` + `docs/postman/environment.json` — коллекция Кейса 2.
+- `postman_collection.json` (в корне) — коллекция Кейса 3: те же и новые эндпоинты(assignees, history, sites summary, reports) и негативные сценарии (404, 409, 422).
+
+## Аутентификация и роли
+
+### Роли и права
+
+- `viewer` — чтение справочников, заявок, истории и отчётов.
+- `technician` — права `viewer`, плюс создание и редактирование заявок и смена статуса заявок, на которые он назначен.
+- `admin` — все операции, включая управление оборудованием, площадками, специалистами, назначение бригад и удаление записей.
+
+Изменяющие запросы требуют access-токена. Без токена возвращается 401, при недостатке прав — 403.
+
+### Эндпоинты аутентификации
+
+- `POST /api/auth/register` — регистрация, роль по умолчанию `viewer`.
+- `POST /api/auth/login` — вход, выдача access-токена и установка refresh-cookie.
+- `POST /api/auth/refresh` — обновление access-токена по refresh-cookie.
+- `POST /api/auth/logout` — выход, удаление refresh-cookie.
+- `GET /api/auth/me` — текущий пользователь и его роль.
+
+### Токены и cookie
+
+- Пароли хранятся в виде bcrypt-хеша. Хеши и пароли не попадают в ответы API и логи.
+- Access-токен подписывается секретом `JWT_ACCESS_SECRET`, срок действия 15 минут (`JWT_ACCESS_TTL`).
+- Refresh-токен передаётся в cookie `refresh_token` с флагами `HttpOnly`, `Secure`, `SameSite=Lax`, путь `/api/auth`. Срок действия 7 дней (`JWT_REFRESH_TTL`).
+- `SameSite=Lax` выбран для схемы, когда UI и API находятся на одном домене за Nginx. В продакшене при HTTPS можно выставить `SameSite=Strict` и `COOKIE_SECURE=true`.
+- Эндпоинт входа защищён отдельным rate limit: 10 попыток в минуту. Сообщение об ошибке одинаково для несуществующего пользователя и неверного пароля.
+
+## Стек развёртывания
+
+
+Все сервисы описаны в `docker-compose.yml`, поднимаются одной командой. Снаружи опубликован только порт 80. `api` и `postgres` доступны только внутри docker-сети `backend`.
+
+- **Nginx** — обратный прокси. Конфигурация в `deploy/nginx/`. Проксирует `/api/` и `/api/docs` на `api:3000`, `/grafana/` на `grafana:3000`, `/prometheus/` на `prometheus:9090`, `/metrics` закрыт по IP. Передаёт заголовки `Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`. В приложении включён `trust proxy`.
+- **api** — Node.js-приложение. Образ собирается многоступенчато (`Dockerfile`): сначала prod-зависимости, затем код в чистый образ, запуск не под root.
+- **postgres** — PostgreSQL 14, том `pgdata`.
+- **prometheus** — собирает метрики с `/metrics` каждые 15 секунд. Правила алертов в `deploy/prometheus/alerts.yml`.
+- **grafana** — дашборд и алерты. Provisioning из `deploy/grafana/`.
+
+
+## Миграции
+
+Схема создаётся только миграциями. `sync({ force: true })` запрещён: он удаляет таблицы и данные, не оставляет истории изменений.
+
+```bash
+npm run migrate
+npm run migrate:undo
+npm run migrate:undo:all
+```
+
+Полный цикл «применить -> откатить -> применить» проходит без ошибок.
+
+При развёртывании через Docker Compose миграции и сиды применяются автоматически сервисом `migrate` — отдельная команда не нужна.
+
+## Мониторинг
+
+Метрики Prometheus на `/metrics`: количество запросов по маршрутам и кодам ответа, длительность обработки, количество ошибок 4xx и 5xx, стандартные метрики Node.js (CPU, память).
+
+- `GET /api/health/live` — жизнеспособность процесса.
+- `GET /api/health/ready` — готовность, включая доступность БД.
+
+Prometheus и Grafana поднимаются в составе стека, datasource и дашборд подключаются автоматически из файлов в `deploy/`.
+
+### Технические панели
+
+- RPS по маршрутам.
+- Доля ответов 4xx и 5xx.
+- Время ответа p95 и p50.
+- Доступность сервиса.
+- CPU и память api.
+
+### Прикладные панели
+
+- Заявки по статусам.
+- Заявки по приоритетам.
+- Среднее время закрытия заявки.
+- Нагрузка на оборудование.
+
+Дашборд хранится в `deploy/grafana/dashboards/api-overview.json`, появляется при развёртывании с нуля.
+
+### Оповещения
+
+В `deploy/prometheus/alerts.yml` два правила:
+
+- `ApiHigh5xxRate` — доля ответов 5xx выше 5% за 5 минут, держится 2 минуты.
+- `ApiDown` — Prometheus не может достучаться до `/metrics` более 1 минуты.
+
+Порядок при срабатывании:
+
+1. Grafana -> Alerting -> Alert rules — определить, какой алерт в `Firing`.
+2. Открыть дашборд «Equipment API — Overview», посмотреть панели «Доля ответов 4xx и 5xx», «Время ответа», «Доступность».
+3. Логи api: `docker compose logs api --tail 100`.
+4. Проверить готовность: `docker compose exec api wget -qO- http://127.0.0.1:3000/api/health/ready`.
+5. После устранения причины алерт вернётся в `Inactive`.
+
+## Тесты
+
+```bash
+npm test
+npm run test:cov
+```
+
+- Модульные тесты: переходы статусов заявки, правила назначения бригады.
+- Интеграционные тесты: регистрация, вход, `/me`, доступ без токена (401), доступ с недостаточными правами (403), конфликты (409).
+- 4 тестовых набора, 16 тестов. Все проходят.
+- Внешние сервисы в тестах не вызываются.
+
+### Изоляция тестов
+
+Тесты используют **отдельную базу данных** `equipment_test`, а не рабочую `equipment`. Это гарантирует, что данные рабочей БД не изменяются при прогоне тестов.
+
+Тестовая БД создаётся **один раз** перед первым запуском:
+
+```bash
+docker start equipment-db
+docker exec -it equipment-db psql -U equipment -d equipment -c "CREATE DATABASE equipment_test;"
+
+# применить миграции на тестовую БД
+$env:NODE_ENV='test'
+npx sequelize-cli db:migrate
+$env:NODE_ENV='development'
+```
+
+Дальше при каждом запуске `npm test`:
+
+- `tests/env.js` (подключён через `setupFiles` в `jest.config.js`) до импорта Sequelize выставляет `NODE_ENV=test` и `DB_NAME=equipment_test`.
+- `tests/setup.js` перед каждым тестом делает `TRUNCATE` всех таблиц тестовой БД.
+- После всех тестов Sequelize закрывает соединение.
+
+Проверить, что рабочая БД не затрагивается:
+
+```bash
+docker exec -it equipment-db psql -U equipment -d equipment -c "SELECT COUNT(*) FROM users;"
+npm test
+docker exec -it equipment-db psql -U equipment -d equipment -c "SELECT COUNT(*) FROM users;"
+```
+
+Число пользователей до и после `npm test` одинаковое.
+
+## Алгоритм развёртывания (для проверки)
+
+### С нуля на чистой машине
+
+```bash
+git clone https://github.com/Star-Raven-Galaxy/Case2.git
+cd Case2
+Copy-Item .env.example .env       # Windows; в Linux/macOS: cp .env.example .env
+docker compose up -d
+```
+
+### Что происходит при `docker compose up -d`
+
+1. Поднимается `postgres`, ждёт `healthy`.
+2. Запускается `migrate` — применяет миграции и сиды, завершается с кодом 0.
+3. Запускается `api` после успешного завершения `migrate`.
+4. Запускаются `nginx`, `prometheus`, `grafana`.
+
+Ждать 20–30 секунд, пока `equipment-api` и `equipment-postgres` станут `(healthy)`.
+
+### Проверка
+
+```bash
+docker compose ps
+docker compose exec api wget -qO- http://127.0.0.1:3000/api/health/ready
+```
+
+Ожидаемо: `{"status":"ready","db":"up","timestamp":"..."}`.
+
+### Адреса
+
+- API через Nginx: `http://localhost/api/health/live`
+- Swagger UI: `http://localhost/api/docs`
+- Prometheus: `http://localhost/prometheus/`
+
+## Архитектурные решения
+
+- Слоистая архитектура: routes → controllers → services → repositories → models. Контроллеры не работают с Sequelize, сервисы не работают с `req`/`res`. При переходе с файлового хранилища на PostgreSQL в Кейсе 3 контроллеры и сервисы не менялись.
+- Внешний контракт API сохраняется между кейсами. Ошибки в едином формате `{ error: { code, message, requestId, details? } }`.
+- Транзакции используются для многотабличных операций: смена статуса заявки и запись в журнал; назначение бригады. Внутри транзакции строка заявки блокируется (`SELECT ... FOR UPDATE`).
+- Прямые SQL-запросы параметризованы через `replacements`. Поля сортировки и направления проверяются по белому списку. `limit` ограничен сверху.
+- Аутентификация: JWT access и refresh в HttpOnly cookie. Секреты в переменных окружения. Пароли — bcrypt.
+- `/metrics` доступен только из docker-сети. UI Grafana и Prometheus — через Nginx.
+
+## Известные ограничения
+
+- `COOKIE_SECURE=false` по умолчанию для локального HTTP. В продакшене за HTTPS выставляется `true`.
+- Nginx слушает только HTTP (80). HTTPS не настроен.
+- Grafana использует пароль по умолчанию `admin`. В продакшене меняется.
+- Прикладные панели Grafana читают данные из PostgreSQL. При недоступной БД они не отрисовываются, технические панели (из Prometheus) продолжают работать.
+- Logout очищает refresh-cookie, но не инвалидирует уже выданный refresh-токен. Для отзыва нужен отдельный механизм (jti + таблица `refresh_tokens`).
+
+## Развёртывание и проверка
+
+Требования: Docker Desktop запущен, терминал открыт в корне проекта.
+
+### 1. Развернуть стек
+
+```powershell
+docker stop equipment-db -ErrorAction SilentlyContinue
+docker compose down -v
+Copy-Item .env.example .env -ErrorAction SilentlyContinue
+docker compose up -d
+Start-Sleep -Seconds 25
+docker compose ps
+```
+
+Ожидается: `equipment-postgres` и `equipment-api` в статусе `(healthy)`, остальные — `Up`. Миграции и сиды применяются автоматически сервисом `equipment-migrate`.
+
+### 2. Проверить готовность
+
+```powershell
+docker compose exec api wget -qO- http://127.0.0.1:3000/api/health/ready
+```
+
+Ожидается: `{"status":"ready","db":"up","timestamp":"..."}`.
+
+### 3. Проверить, что данные загружены
+
+```powershell
+docker exec -i equipment-postgres psql -U equipment -d equipment -c "SELECT 'sites' AS t, COUNT(*) FROM sites UNION ALL SELECT 'equipment', COUNT(*) FROM equipment UNION ALL SELECT 'requests', COUNT(*) FROM maintenance_requests UNION ALL SELECT 'users', COUNT(*) FROM users;"
+```
+
+Ожидаемо: sites=2, equipment=6, requests=20, users=3.
+
+### 4. Проверить авторизацию
+
+```powershell
+$body = @{ email = "admin@example.com"; password = "Passw0rd!" } | ConvertTo-Json
+$login = Invoke-RestMethod -Uri "http://localhost/api/auth/login" -Method Post -ContentType "application/json" -Body $body
+$token = $login.data.accessToken
+Invoke-RestMethod -Uri "http://localhost/api/auth/me" -Headers @{ Authorization = "Bearer $token" }
+```
+
+Ожидаемо: объект пользователя `admin@example.com` без `passwordHash`.
+
+### 5. Прогнать тесты
+
+```powershell
+docker start equipment-db
+docker exec -i equipment-db psql -U equipment -d equipment -c "CREATE DATABASE equipment_test;" 2>$null
+$env:NODE_ENV='test'
+npx sequelize-cli db:migrate
+$env:NODE_ENV='development'
+npm test
+```
+
+Ожидается: `Test Suites: 4 passed`, `Tests: 16 passed`. Тесты используют отдельную БД `equipment_test`, рабочая не затрагивается.
+
+### 6. Открыть интерфейсы
+
+- Swagger UI: `http://localhost/api/docs`
+- Grafana: `http://localhost/grafana/`, логин `admin`, пароль `admin`
+- Prometheus: `http://localhost/prometheus/targets`, target `api:3000` в статусе `UP`
+- Prometheus Alerts: `http://localhost/prometheus/alerts`, алерты `ApiHigh5xxRate` и `ApiDown` в статусе `Inactive`
+
+### 7. Остановить
+
+```powershell
+docker compose down
+```
+
+Данные в томах сохраняются. Полный сброс — `docker compose down -v`.
+
+

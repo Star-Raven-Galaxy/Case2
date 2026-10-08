@@ -1,6 +1,8 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { equipmentController } from '../controllers/equipment.controller.js';
 import { validate } from '../middlewares/validate.js';
+import { authenticate } from '../middlewares/authenticate.js';
+import { authorize } from '../middlewares/authorize.js';
 import {
   createEquipmentSchema,
   updateEquipmentSchema,
@@ -10,44 +12,13 @@ import {
 
 export const equipmentRouter = Router();
 
-equipmentRouter.get(
-  '/',
-  validate(listEquipmentSchema),
-  equipmentController.list
-);
+equipmentRouter.use(authenticate);
 
-equipmentRouter.post(
-  '/',
-  validate(createEquipmentSchema),
-  equipmentController.create
-);
+equipmentRouter.get('/', validate(listEquipmentSchema), equipmentController.list);
+equipmentRouter.get('/:id', validate(idParamOnlySchema), equipmentController.getById);
+equipmentRouter.get('/:id/requests', validate(idParamOnlySchema), equipmentController.getRequests);
+equipmentRouter.get('/:id/weather', validate(idParamOnlySchema), equipmentController.getWeather);
 
-equipmentRouter.get(
-  '/:id',
-  validate(idParamOnlySchema),
-  equipmentController.getById
-);
-
-equipmentRouter.patch(
-  '/:id',
-  validate(updateEquipmentSchema),
-  equipmentController.update
-);
-
-equipmentRouter.delete(
-  '/:id',
-  validate(idParamOnlySchema),
-  equipmentController.remove
-);
-
-equipmentRouter.get(
-  '/:id/requests',
-  validate(idParamOnlySchema),
-  equipmentController.getRequests
-);
-
-equipmentRouter.get(
-  '/:id/weather',
-  validate(idParamOnlySchema),
-  equipmentController.getWeather
-);
+equipmentRouter.post('/', authorize('admin'), validate(createEquipmentSchema), equipmentController.create);
+equipmentRouter.patch('/:id', authorize('admin'), validate(updateEquipmentSchema), equipmentController.update);
+equipmentRouter.delete('/:id', authorize('admin'), validate(idParamOnlySchema), equipmentController.remove);

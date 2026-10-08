@@ -1,29 +1,33 @@
-import express from 'express';
+﻿import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 
 import { config } from './config/index.js';
 import { httpLogger } from './lib/http-logger.js';
 import { contextMiddleware } from './lib/context.js';
+import { metricsMiddleware } from './middlewares/metrics.js';
 import { apiRouter } from './routes/index.js';
+import { metricsRouter } from './routes/metrics.routes.js';
+import { docsRouter } from './routes/docs.routes.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
 export const app = express();
 
+app.set('trust proxy', config.trustProxy ? 1 : false);
+app.disable('x-powered-by');
+
 app.use(httpLogger);
 app.use(contextMiddleware);
 
-app.use(helmet());
-
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (config.corsOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+      if (config.corsOrigins.includes(origin)) return callback(null, true);
       callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
@@ -33,6 +37,8 @@ app.use(
     maxAge: 86400,
   })
 );
+
+app.use(metricsMiddleware);
 
 app.use(
   '/api',
@@ -47,7 +53,10 @@ app.use(
 
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+app.use(cookieParser());
 
+app.use('/metrics', metricsRouter);
+app.use('/api/docs', docsRouter);
 app.use('/api', apiRouter);
 app.use(notFound);
 app.use(errorHandler);

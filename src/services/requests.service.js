@@ -1,8 +1,9 @@
-import { sequelize, MaintenanceRequest, RequestStatusHistory } from '../db/index.js';
+﻿import { sequelize, MaintenanceRequest, RequestStatusHistory } from '../db/index.js';
 import { requestsRepository } from '../repositories/requests.repository.js';
 import { equipmentRepository } from '../repositories/equipment.repository.js';
 import { NotFoundError } from '../errors/NotFoundError.js';
 import { ConflictError } from '../errors/ConflictError.js';
+import { ForbiddenError } from '../errors/ForbiddenError.js';
 
 const ALLOWED_TRANSITIONS = {
   new: ['in_progress', 'rejected'],
@@ -25,7 +26,6 @@ export const requestsService = {
   async create(payload) {
     const equipment = await equipmentRepository.findById(payload.equipmentId);
     if (!equipment) throw new NotFoundError('Оборудование');
-
     return requestsRepository.create(payload);
   },
 
@@ -34,13 +34,24 @@ export const requestsService = {
     return requestsRepository.update(id, patch);
   },
 
-  async changeStatus(id, nextStatus, changedBy = 'system', comment = null) {
+  async changeStatus(id, nextStatus, user, changedBy = null, comment = null) {
     return sequelize.transaction(async (t) => {
       const request = await MaintenanceRequest.findByPk(id, {
         transaction: t,
         lock: t.LOCK.UPDATE,
       });
       if (!request) throw new NotFoundError('Заявка');
+
+      if (user.role === 'technician') {
+        const isAssigned = await requestsRepository.isTechnicianAssigned(
+          id,
+          user.technicianId ?? user.id,
+          t
+        );
+        if (!isAssigned) {
+          throw new ForbiddenError('Заявка не назначена на этого специалиста');
+        }
+      }
 
       const allowed = ALLOWED_TRANSITIONS[request.status] || [];
       if (!allowed.includes(nextStatus)) {
@@ -69,7 +80,7 @@ export const requestsService = {
           requestId: id,
           oldStatus,
           newStatus: nextStatus,
-          changedBy,
+          changedBy: changedBy ?? user.email ?? 'system',
           comment,
         },
         { transaction: t }

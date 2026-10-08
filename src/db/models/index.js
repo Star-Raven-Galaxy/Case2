@@ -6,6 +6,7 @@ import { initTechnician } from './technician.model.js';
 import { initMaintenanceRequest } from './maintenance-request.model.js';
 import { initRequestStatusHistory } from './request-status-history.model.js';
 import { initRequestAssignee } from './request-assignee.model.js';
+import { initUser } from './user.model.js';
 
 const Site = initSite(sequelize);
 const Equipment = initEquipment(sequelize);
@@ -14,6 +15,7 @@ const Technician = initTechnician(sequelize);
 const MaintenanceRequest = initMaintenanceRequest(sequelize);
 const RequestStatusHistory = initRequestStatusHistory(sequelize);
 const RequestAssignee = initRequestAssignee(sequelize);
+const User = initUser(sequelize);
 
 const models = {
   Site,
@@ -23,9 +25,9 @@ const models = {
   MaintenanceRequest,
   RequestStatusHistory,
   RequestAssignee,
+  User,
 };
 
-// Регистрация ассоциаций
 Object.values(models).forEach((model) => {
   if (typeof model.associate === 'function') {
     model.associate(models);
@@ -41,4 +43,5 @@ export {
   MaintenanceRequest,
   RequestStatusHistory,
   RequestAssignee,
+  User,
 };

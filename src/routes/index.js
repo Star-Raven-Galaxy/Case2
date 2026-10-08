@@ -1,15 +1,15 @@
 ﻿import { Router } from 'express';
+import { authRouter } from './auth.routes.js';
 import { equipmentRouter } from './equipment.routes.js';
 import { requestsRouter } from './requests.routes.js';
 import { sitesRouter } from './sites.routes.js';
 import { reportsRouter } from './reports.routes.js';
+import { healthRouter } from './health.routes.js';
 
 export const apiRouter = Router();
 
-apiRouter.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
+apiRouter.use('/health', healthRouter);
+apiRouter.use('/auth', authRouter);
 apiRouter.use('/equipment', equipmentRouter);
 apiRouter.use('/requests', requestsRouter);
 apiRouter.use('/sites', sitesRouter);

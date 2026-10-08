@@ -2,8 +2,11 @@
 import { z } from 'zod';
 import { reportsController } from '../controllers/reports.controller.js';
 import { validate } from '../middlewares/validate.js';
+import { authenticate } from '../middlewares/authenticate.js';
 
 export const reportsRouter = Router();
+
+reportsRouter.use(authenticate);
 
 reportsRouter.get(
   '/equipment-load',
