@@ -12,9 +12,9 @@ describe('Роли (integration)', () => {
       .post('/api/equipment')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        name: 'Test',
+        name: 'Test Turbine',
         type: 'turbine',
-        serialNumber: 'SN-1',
+        serialNumber: 'SN-ROLES-1',
         location: { lat: 1, lon: 1 },
         status: 'operational',
         installedAt: '2024-01-01T00:00:00.000Z',
