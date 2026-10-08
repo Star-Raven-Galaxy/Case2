@@ -1,4 +1,4 @@
-﻿services:
+services:
   postgres:
     image: postgres:14-alpine
     container_name: equipment-postgres
@@ -31,7 +31,7 @@
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
-    command: sh -c "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
+    command: sh -c "npx sequelize-cli db:migrate"
     depends_on:
       postgres:
         condition: service_healthy
