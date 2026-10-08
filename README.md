@@ -282,3 +282,51 @@ erDiagram
 
 - `docs/postman/collection.json` + `docs/postman/environment.json` — коллекция Кейса 2.
 - `postman_collection.json` (в корне) — коллекция Кейса 3: те же и новые эндпоинты(assignees, history, sites summary, reports) и негативные сценарии (404, 409, 422).
+
+## Аутентификация и роли
+
+### Роли и права
+
+- `viewer` — чтение справочников, заявок, истории и отчётов.
+- `technician` — права `viewer`, плюс создание и редактирование заявок и смена статуса заявок, на которые он назначен.
+- `admin` — все операции, включая управление оборудованием, площадками, специалистами, назначение бригад и удаление записей.
+
+Изменяющие запросы требуют access-токена. Без токена возвращается 401, при недостатке прав — 403.
+
+### Эндпоинты аутентификации
+
+- `POST /api/auth/register` — регистрация, роль по умолчанию `viewer`.
+- `POST /api/auth/login` — вход, выдача access-токена и установка refresh-cookie.
+- `POST /api/auth/refresh` — обновление access-токена по refresh-cookie.
+- `POST /api/auth/logout` — выход, удаление refresh-cookie.
+- `GET /api/auth/me` — текущий пользователь и его роль.
+
+### Токены и cookie
+
+- Пароли хранятся в виде bcrypt-хеша. Хеши и пароли не попадают в ответы API и логи.
+- Access-токен подписывается секретом `JWT_ACCESS_SECRET`, срок действия 15 минут (`JWT_ACCESS_TTL`).
+- Refresh-токен передаётся в cookie `refresh_token` с флагами `HttpOnly`, `Secure`, `SameSite=Lax`, путь `/api/auth`. Срок действия 7 дней (`JWT_REFRESH_TTL`).
+- `SameSite=Lax` выбран для схемы, когда UI и API находятся на одном домене за Nginx. В продакшене при HTTPS можно выставить `SameSite=Strict` и `COOKIE_SECURE=true`.
+- Эндпоинт входа защищён отдельным rate limit: 10 попыток в минуту. Сообщение об ошибке одинаково для несуществующего пользователя и неверного пароля.
+
+## Стек развёртывания
+
+Схема:
+
+Все сервисы описаны в `docker-compose.yml`, поднимаются одной командой. Снаружи опубликован только порт 80. `api` и `postgres` доступны только внутри docker-сети `backend`.
+
+- **Nginx** — обратный прокси. Конфигурация в `deploy/nginx/`. Проксирует `/api/` и `/api/docs` на `api:3000`, `/grafana/` на `grafana:3000`, `/prometheus/` на `prometheus:9090`, `/metrics` закрыт по IP. Передаёт заголовки `Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`. В приложении включён `trust proxy`.
+- **api** — Node.js-приложение. Образ собирается многоступенчато (`Dockerfile`): сначала prod-зависимости, затем код в чистый образ, запуск не под root.
+- **postgres** — PostgreSQL 14, том `pgdata`.
+- **prometheus** — собирает метрики с `/metrics` каждые 15 секунд. Правила алертов в `deploy/prometheus/alerts.yml`.
+- **grafana** — дашборд и алерты. Provisioning из `deploy/grafana/`.
+
+### Развёртывание с нуля
+
+```bash
+git clone https://github.com/Star-Raven-Galaxy/Case2.git
+cd Case2
+Copy-Item .env.example .env       # Windows, или cp .env.example .env
+docker compose up -d
+docker compose exec api npx sequelize-cli db:migrate
+docker compose exec api npx sequelize-cli db:seed:all

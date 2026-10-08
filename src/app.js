@@ -10,6 +10,7 @@ import { contextMiddleware } from './lib/context.js';
 import { metricsMiddleware } from './middlewares/metrics.js';
 import { apiRouter } from './routes/index.js';
 import { metricsRouter } from './routes/metrics.routes.js';
+import { docsRouter } from './routes/docs.routes.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
@@ -21,7 +22,7 @@ app.disable('x-powered-by');
 app.use(httpLogger);
 app.use(contextMiddleware);
 
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -55,6 +56,7 @@ app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(cookieParser());
 
 app.use('/metrics', metricsRouter);
+app.use('/api/docs', docsRouter);
 app.use('/api', apiRouter);
 app.use(notFound);
 app.use(errorHandler);
